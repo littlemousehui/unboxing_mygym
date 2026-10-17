@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今天練什麼？運動盲盒</title>
+<meta name="description" content="選擇時間、地點和體力，拆開盲盒抽出今天的運動任務！">
+<!-- 字體：英文像素字 Press Start 2P、中文 Noto Sans TC（沒網路時會自動改用系統字體） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ========== 1. 顏色設定（規格書 5.1） ========== */
+:root{
+  --bg:#0D0221;
+  --pink:#FF2E88;
+  --cyan:#00E5FF;
+  --r1:#39FF14;   /* 普通 */
+  --r2:#B026FF;   /* 稀有 */
+  --r3:#FFD700;   /* 傳說 */
+  --text:#FFFFFF;
+  --dim:#9d8fc2;
+  --panel:#1a0838;
+  --pixel:'Press Start 2P', monospace;
+  --zh:'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--zh);
+  overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ========== 2. 街機背景：網格地板 + 掃描線 ========== */
+.floor{
+  position:fixed;left:-50%;right:-50%;bottom:0;height:45vh;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,46,136,.55) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255,46,136,.55) 2px, transparent 2px);
+  background-size:60px 60px;
+  transform:perspective(300px) rotateX(60deg);
+  transform-origin:bottom;
+  mask-image:linear-gradient(transparent, #000 70%);
+  -webkit-mask-image:linear-gradient(transparent, #000 70%);
+  animation:floorMove 2s linear infinite;
+}
+@keyframes floorMove{to{background-position:0 60px}}
+.scan{
+  position:fixed;inset:0;z-index:50;pointer-events:none;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 1px 4px);
+}
+.sun{
+  position:fixed;left:50%;bottom:38vh;width:220px;height:220px;margin-left:-110px;border-radius:50%;
+  z-index:0;pointer-events:none;opacity:.35;
+  background:linear-gradient(#ffd700, #ff2e88 70%);
+  mask-image:repeating-linear-gradient(to bottom,#000 0 14px,transparent 14px 20px);
+  -webkit-mask-image:repeating-linear-gradient(to bottom,#000 0 14px,transparent 14px 20px);
+}
+
+/* ========== 3. 版面 ========== */
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:24px 16px 48px}
+.screen{display:none}
+.screen.active{display:block;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* 標題 */
+.logo{text-align:center;margin:8px 0 24px}
+.logo .en{font-family:var(--pixel);font-size:11px;color:var(--cyan);letter-spacing:2px;text-shadow:0 0 8px var(--cyan)}
+.logo h1{
+  font-size:40px;font-weight:900;margin:10px 0 12px;line-height:1.15;
+  color:#fff;
+  text-shadow:0 0 6px var(--pink),0 0 18px var(--pink),0 0 36px var(--pink);
+}
+.blink{font-family:var(--pixel);font-size:10px;color:var(--r3);animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* 區塊標題 */
+.label{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-weight:700;font-size:15px}
+.label .step{font-family:var(--pixel);font-size:9px;color:var(--bg);background:var(--cyan);padding:5px 6px;border-radius:3px}
+
+/* 選項按鈕 */
+.grid{display:grid;gap:10px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g5{grid-template-columns:repeat(5,1fr);gap:6px}
+.opt{
+  min-height:56px;border-radius:10px;cursor:pointer;
+  background:rgba(26,8,56,.85);color:var(--text);
+  border:2px solid rgba(0,229,255,.35);
+  font-family:var(--zh);font-size:15px;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;
+  transition:transform .12s, border-color .2s, box-shadow .2s;
+}
+.opt:active{transform:scale(.96)}
+.opt .emo{font-size:26px;line-height:1}
+.opt .num{font-family:var(--pixel);font-size:16px;color:var(--cyan)}
+.opt .sub{font-size:11px;color:var(--dim);font-weight:400}
+.opt.on{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink),0 0 16px rgba(255,46,136,.7);background:rgba(255,46,136,.12)}
+.opt.on .num{color:#fff}
+
+/* 電量圖示（體力） */
+.bat{width:38px;height:18px;border:2px solid currentColor;border-radius:4px;display:flex;gap:2px;padding:2px;position:relative}
+.bat::after{content:'';position:absolute;right:-6px;top:4px;width:3px;height:6px;background:currentColor;border-radius:0 2px 2px 0}
+.bat i{flex:1;background:currentColor;opacity:.15;border-radius:1px}
+.bat i.f{opacity:1}
+.e1{color:#ff3b3b}.e2{color:#ff8a00}.e3{color:#ffe600}.e4{color:#a6ff00}.e5{color:var(--r1)}
+.g5 .opt{font-size:11px;min-height:72px;padding:8px 2px}
+
+/* 主要按鈕 */
+.btn{
+  display:block;width:100%;min-height:56px;border:none;border-radius:12px;cursor:pointer;
+  font-family:var(--zh);font-size:18px;font-weight:900;letter-spacing:1px;color:#fff;
+  background:var(--pink);box-shadow:0 5px 0 #a0105a,0 0 22px rgba(255,46,136,.6);
+  transition:transform .1s, box-shadow .1s, opacity .2s;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #a0105a,0 0 22px rgba(255,46,136,.6)}
+.btn:disabled{background:#3a3150;color:#8a80a5;box-shadow:0 5px 0 #241d35;cursor:not-allowed}
+.btn.cyan{background:var(--cyan);color:var(--bg);box-shadow:0 5px 0 #008a99,0 0 22px rgba(0,229,255,.5)}
+.btn.cyan:disabled{background:#3a3150;color:#8a80a5;box-shadow:0 5px 0 #241d35}
+.btn.ghost{background:transparent;border:2px solid rgba(255,255,255,.3);box-shadow:none;font-size:15px;min-height:48px}
+.btn.ghost:active{transform:scale(.98)}
+.btn + .btn{margin-top:14px}
+.hint{text-align:center;font-size:12px;color:var(--dim);margin-top:10px;min-height:18px}
+.draw-wrap{margin-top:28px}
+
+/* ========== 4. 拆盲盒動畫（規格書 5.3） ========== */
+.stage{height:300px;display:grid;place-items:center;position:relative}
+.host{text-align:center;font-weight:900;font-size:18px;min-height:28px;margin-top:6px}
+.box{position:relative;width:150px;height:150px;--glow:var(--r1)}
+.box .body{
+  position:absolute;left:0;right:0;bottom:0;height:110px;border-radius:6px;
+  background:linear-gradient(#ff2e88,#a0105a);border:3px solid #fff;
+  box-shadow:0 0 24px var(--pink);overflow:hidden;
+  display:grid;place-items:center;
+}
+.box .body::before,.box .lid::before{content:'';position:absolute;top:0;bottom:0;left:50%;width:22px;transform:translateX(-50%);background:var(--cyan)}
+.box .q{position:relative;font-family:var(--pixel);font-size:34px;color:#fff;text-shadow:0 0 8px #000, 3px 3px 0 #000}
+.box .lid{
+  position:absolute;left:-10px;right:-10px;top:8px;height:38px;border-radius:6px;z-index:2;
+  background:#ff5aa5;border:3px solid #fff;overflow:hidden;
+  transition:transform .5s cubic-bezier(.3,1.6,.6,1), opacity .5s;
+}
+.box .burst{position:absolute;left:50%;top:40%;width:24px;height:24px;margin:-12px;border-radius:50%;background:var(--glow);opacity:0;z-index:0}
+.box.shake{animation:shake 1s ease-in}
+@keyframes shake{
+  0%{transform:rotate(0)}10%{transform:rotate(-3deg)}20%{transform:rotate(3deg)}
+  30%{transform:rotate(-5deg)}40%{transform:rotate(5deg)}50%{transform:rotate(-7deg)}
+  58%{transform:rotate(7deg)}66%{transform:rotate(-9deg)}74%{transform:rotate(9deg)}
+  82%{transform:rotate(-11deg) scale(1.05)}90%{transform:rotate(11deg) scale(1.08)}100%{transform:rotate(0) scale(1.1)}
+}
+.box.open .lid{transform:translate(-40px,-110px) rotate(-40deg);opacity:0}
+.box.open .burst{animation:burst .8s ease-out forwards}
+.box.open .body{box-shadow:0 0 50px var(--glow)}
+@keyframes burst{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(16)}}
+.box.gone{opacity:0;transform:scale(.6);transition:.3s}
+
+/* 抽出的卡片 */
+.card{
+  position:relative;border-radius:16px;padding:20px 18px;background:var(--panel);
+  border:3px solid var(--rc);box-shadow:0 0 22px var(--rc), inset 0 0 30px rgba(0,0,0,.4);
+}
+.card.pop{animation:pop .6s cubic-bezier(.2,1.4,.5,1)}
+@keyframes pop{0%{opacity:0;transform:translateY(80px) scale(.3)}100%{opacity:1;transform:none}}
+.card.r1{--rc:var(--r1)} .card.r2{--rc:var(--r2)} .card.r3{--rc:var(--r3)}
+.card.r2{box-shadow:0 0 30px var(--r2),0 0 70px rgba(176,38,255,.45)}
+/* 傳說卡：彩虹流光邊框 */
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.card.r3{
+  border-color:transparent;
+  background:linear-gradient(var(--panel),var(--panel)) padding-box,
+             conic-gradient(from var(--ang),#ff3b3b,#ff8a00,#ffe600,#39ff14,#00e5ff,#b026ff,#ff2e88,#ff3b3b) border-box;
+  animation:spin 2.5s linear infinite;
+  box-shadow:0 0 30px rgba(255,215,0,.7),0 0 80px rgba(255,46,136,.35);
+}
+.card.r3.pop{animation:pop .6s cubic-bezier(.2,1.4,.5,1), spin 2.5s linear infinite}
+@keyframes spin{to{--ang:360deg}}
+.rar{display:inline-flex;align-items:center;gap:6px;font-family:var(--pixel);font-size:10px;color:var(--bg);background:var(--rc);padding:6px 8px;border-radius:4px}
+.card.r3 .rar{background:var(--r3)}
+.meta{float:right;font-size:12px;color:var(--dim);margin-top:4px}
+.card h2{font-size:24px;font-weight:900;margin:14px 0 6px;color:#fff;text-shadow:0 0 10px var(--rc)}
+.card.r3 h2{text-shadow:0 0 10px var(--r3)}
+.quote{color:var(--cyan);font-size:14px;margin-bottom:14px}
+.moves{list-style:none;border-top:1px dashed rgba(255,255,255,.2)}
+.moves li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed rgba(255,255,255,.2);font-size:15px}
+.moves li b{font-weight:700}
+.moves li small{display:block;color:var(--dim);font-size:12px;font-weight:400;margin-top:2px}
+.moves li span{white-space:nowrap;color:var(--r3);font-weight:700;font-size:14px}
+.total{margin-top:12px;font-size:13px;color:var(--dim);text-align:right}
+.card-actions{margin-top:22px}
+
+/* 傳說卡登場時畫面震動 */
+.quake{animation:quake .5s}
+@keyframes quake{
+  0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}
+  60%{transform:translate(-4px,-2px)}80%{transform:translate(4px,2px)}
+}
+
+/* ========== 5. 計時器（規格書 3.4） ========== */
+.t-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.t-title{font-weight:900;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{min-width:48px;height:48px;border-radius:10px;border:2px solid rgba(0,229,255,.4);background:transparent;color:#fff;font-size:20px;cursor:pointer}
+.bar{height:10px;background:rgba(255,255,255,.1);border-radius:6px;margin:14px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .4s}
+.t-count{font-family:var(--pixel);font-size:9px;color:var(--dim);text-align:right}
+.t-panel{margin-top:18px;border-radius:16px;padding:24px 16px;text-align:center;background:rgba(26,8,56,.9);border:2px solid var(--cyan);box-shadow:0 0 20px rgba(0,229,255,.35)}
+.t-panel.rest{border-color:var(--r1);box-shadow:0 0 20px rgba(57,255,20,.35)}
+.phase{font-family:var(--pixel);font-size:11px;color:var(--cyan)}
+.t-panel.rest .phase{color:var(--r1)}
+.t-name{font-size:28px;font-weight:900;margin:14px 0 4px}
+.t-set{font-size:14px;color:var(--dim)}
+.big{font-family:var(--pixel);font-size:64px;margin:22px 0 10px;color:#fff;text-shadow:0 0 14px var(--pink)}
+.big.unit{font-size:44px}
+.big.warn{color:var(--r3);animation:pulse 1s ease infinite}
+@keyframes pulse{0%{transform:scale(1.25)}100%{transform:scale(1)}}
+.t-tip{font-size:14px;color:#d8d0f0;min-height:20px}
+.t-next{margin-top:14px;font-size:13px;color:var(--dim)}
+.t-ctrl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.t-ctrl .btn{margin:0;font-size:16px}
+.t-ctrl .btn.full{grid-column:1/-1}
+.btn.quit{background:transparent;border:2px solid rgba(255,59,59,.6);color:#ff8a8a;box-shadow:none;font-size:14px;min-height:48px;margin-top:14px}
+.btn.quit.confirm{background:#ff3b3b;color:#fff;border-color:#ff3b3b}
+
+/* ========== 6. 完成畫面 ========== */
+.clear{text-align:center;padding-top:30px}
+.clear .big-title{font-family:var(--pixel);font-size:26px;line-height:1.5;color:var(--r3);text-shadow:0 0 12px var(--r3),4px 4px 0 var(--pink);animation:pulse 1.2s ease infinite alternate}
+.clear .trophy{font-size:80px;margin:20px 0;animation:bounce 1s ease infinite alternate}
+@keyframes bounce{to{transform:translateY(-12px)}}
+.clear p{font-size:18px;font-weight:900;margin-bottom:6px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0}
+.stat{background:rgba(26,8,56,.9);border:2px solid rgba(0,229,255,.4);border-radius:12px;padding:14px 8px}
+.stat b{display:block;font-family:var(--pixel);font-size:18px;color:var(--cyan);margin-bottom:8px}
+.stat span{font-size:12px;color:var(--dim)}
+.confetti{position:fixed;top:-20px;font-size:22px;z-index:60;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+footer{text-align:center;font-size:11px;color:var(--dim);margin-top:36px}
+
+/* 使用者開啟「減少動態效果」時，動畫改成簡單淡入 */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .floor{animation:none}
+}
+@media (max-width:360px){
+  .logo h1{font-size:34px}
+  .g5 .opt{font-size:10px}
+}
+</style>
+</head>
+<body>
+<div class="sun"></div>
+<div class="floor"></div>
+<div class="scan"></div>
+
+<main class="app" id="app">
+
+  <!-- ===== 畫面 1：首頁選條件 ===== -->
+  <section class="screen active" id="home">
+    <div class="logo">
+      <div class="en">WORKOUT BLIND BOX</div>
+      <h1>今天練什麼？</h1>
+      <div class="blink">INSERT COIN ▸ 選好條件開始</div>
+    </div>
+
+    <div class="label"><span class="step">1P</span>今天有多少時間？</div>
+    <div class="grid g3" id="opt-time"></div>
+
+    <div class="label"><span class="step">2P</span>在哪裡運動？</div>
+    <div class="grid g2" id="opt-loc"></div>
+
+    <div class="label"><span class="step">3P</span>現在體力剩多少？</div>
+    <div class="grid g5" id="opt-energy"></div>
+
+    <div class="draw-wrap">
+      <button class="btn" id="btn-draw" disabled>🎁 拆盲盒！</button>
+      <div class="hint" id="hint">還差：時間、地點、體力</div>
+    </div>
+    <footer>不需要任何圖片，全靠 CSS 與 emoji 打造 ✦</footer>
+  </section>
+
+  <!-- ===== 畫面 2：拆盲盒 + 任務卡 ===== -->
+  <section class="screen" id="draw">
+    <div class="stage" id="stage">
+      <div class="box" id="box">
+        <div class="burst"></div>
+        <div class="lid"></div>
+        <div class="body"><span class="q">?</span></div>
+      </div>
+    </div>
+    <div id="result" hidden>
+      <div class="host" id="host"></div>
+      <div style="height:14px"></div>
+      <div id="card"></div>
+      <div class="card-actions">
+        <button class="btn" id="btn-start">▶ 開始任務</button>
+        <button class="btn cyan" id="btn-reroll">🔄 重抽 ×2</button>
+        <div class="hint" id="reroll-hint"></div>
+        <button class="btn ghost" id="btn-back">↩ 重選條件</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 畫面 3：計時器 ===== -->
+  <section class="screen" id="timer">
+    <div class="t-top">
+      <div class="t-title" id="t-title"></div>
+      <button class="icon-btn" id="btn-sound" aria-label="音效開關">🔇</button>
+    </div>
+    <div class="bar"><i id="t-bar"></i></div>
+    <div class="t-count" id="t-count"></div>
+
+    <div class="t-panel" id="t-panel">
+      <div class="phase" id="t-phase">GO!</div>
+      <div class="t-name" id="t-name"></div>
+      <div class="t-set" id="t-set"></div>
+      <div class="big" id="t-big"></div>
+      <div class="t-tip" id="t-tip"></div>
+      <div class="t-next" id="t-next"></div>
+    </div>
+
+    <div class="t-ctrl">
+      <button class="btn cyan" id="btn-pause">⏸ 暫停</button>
+      <button class="btn" id="btn-skip">⏭ 跳過</button>
+    </div>
+    <button class="btn quit" id="btn-quit">放棄任務</button>
+  </section>
+
+  <!-- ===== 畫面 4：任務完成 ===== -->
+  <section class="screen" id="clear">
+    <div class="clear">
+      <div class="big-title">MISSION<br>CLEAR!</div>
+      <div class="trophy">🏆</div>
+      <p>今天的你是 MVP！</p>
+      <div style="color:var(--dim);font-size:14px" id="c-name"></div>
+      <div class="stats">
+        <div class="stat"><b id="c-moves">0</b><span>完成動作組數</span></div>
+        <div class="stat"><b id="c-time">0:00</b><span>實際花費時間</span></div>
+      </div>
+      <button class="btn" id="btn-again">🎁 再玩一次</button>
+    </div>
+  </section>
+</main>
+
+<script>
+/* =====================================================
+   1. 運動卡題庫（規格書第 4 節）
+   每張卡：l=地點、t=時間(分鐘)、r=稀有度(1普通 2稀有 3傳說)
+           n=任務名稱、q=鼓勵語、m=動作清單
+   動作格式：[名稱, 數量, 單位('s'秒 / 'r'下), 組數, 小提示]
+   想新增卡片？照格式複製一行修改即可！
+   ===================================================== */
+const CARDS = [
+  /* ---------- 🛏️ 宿舍／房間（不跳躍、不吵鄰居） ---------- */
+  {l:'dorm',t:10,r:1,n:'宿舍 10 分鐘喚醒術',q:'床還在呼喚你？先讓它等 10 分鐘！',m:[
+    ['頸部繞圈',30,'s',2,'慢慢轉，左右各半'],['原地踏步',60,'s',2,'手臂一起擺動'],
+    ['貓牛式',10,'r',2,'四足跪姿，拱背再塌腰'],['嬰兒式伸展',45,'s',1,'跪坐往前趴，深呼吸']]},
+  {l:'dorm',t:10,r:1,n:'今天不想動但至少伸展一下',q:'沙發勇者，伸個懶腰也算經驗值！',m:[
+    ['坐姿前彎',40,'s',2,'雙腿伸直，手往腳尖延伸'],['肩膀繞圈',30,'s',2,'往前 15 秒、往後 15 秒'],
+    ['仰躺抱膝',40,'s',2,'抱住膝蓋輕輕搖晃'],['4 字伸展',30,'s',2,'躺著把腳踝放到另一膝上']]},
+  {l:'dorm',t:10,r:2,n:'宿舍 10 分鐘燃脂挑戰',q:'安靜但不簡單，鄰居不會發現你在變強！',m:[
+    ['深蹲',15,'r',3,'膝蓋對齊腳尖，屁股往後坐'],['跪姿伏地挺身',10,'r',3,'膝蓋著地，身體保持一直線'],
+    ['平板支撐',30,'s',3,'手肘撐地，肚子收緊'],['臀橋',15,'r',2,'躺著抬起屁股，停 1 秒']]},
+  {l:'dorm',t:10,r:3,n:'宿舍無聲地獄 10 分',q:'傳說任務降臨！無聲，但很燒！',m:[
+    ['深蹲',20,'r',3,'下去慢、起來快'],['伏地挺身',10,'r',3,'做不到就改跪姿'],
+    ['平板支撐',45,'s',3,'撐住！不要塌腰'],['慢速登山者',30,'s',3,'平板姿勢，膝蓋輪流往胸口']]},
+  {l:'dorm',t:30,r:1,n:'宿舍 30 分鐘伸展充電',q:'慢慢來，今天的任務是對自己好一點！',m:[
+    ['頸肩伸展',60,'s',2,'頭輕輕倒向一側'],['貓牛式',12,'r',3,'配合呼吸'],
+    ['原地踏步',120,'s',3,'可以邊聽音樂'],['臀橋',12,'r',3,'抬起時夾緊屁股'],
+    ['仰躺扭轉',45,'s',2,'膝蓋倒向一側，肩膀貼地'],['嬰兒式伸展',60,'s',2,'放鬆整個背部']]},
+  {l:'dorm',t:30,r:1,n:'邊追劇邊動 30 分鐘',q:'一集影集的時間，順便刷一點經驗值！',m:[
+    ['原地踏步',180,'s',3,'眼睛看劇、腳不要停'],['坐姿抬腿',15,'r',3,'坐在椅子上，伸直腿抬起'],
+    ['牆壁伏地挺身',12,'r',3,'手撐牆，身體斜斜的'],['側躺抬腿',15,'r',2,'左右各做一次'],
+    ['坐姿前彎',60,'s',2,'追完劇順便伸展']]},
+  {l:'dorm',t:30,r:2,n:'宿舍 30 分鐘肌力關卡',q:'★★ 關卡開啟！小房間也能練出大力量！',m:[
+    ['原地踏步熱身',180,'s',1,'讓身體熱起來'],['深蹲',15,'r',3,'背打直'],
+    ['跪姿伏地挺身',12,'r',3,'胸口靠近地板'],['後跨弓箭步',10,'r',3,'左右腳輪流往後跨'],
+    ['臀橋',15,'r',3,'停 1 秒再放下'],['平板支撐',40,'s',3,'穩住呼吸'],['超人式',12,'r',3,'趴著同時抬起手腳']]},
+  {l:'dorm',t:30,r:3,n:'宿舍 30 分鐘魔王連戰',q:'★★★ 魔王登場！撐過去你就是傳說！',m:[
+    ['分腿蹲（後腳放床沿）',10,'r',3,'左右各算一組'],['伏地挺身',12,'r',4,'累了就改跪姿'],
+    ['平板支撐',60,'s',3,'肚子收緊'],['側棒式',30,'s',3,'左右輪流'],
+    ['慢速登山者',40,'s',3,'保持安靜不跳'],['單腳臀橋',10,'r',3,'左右各算一組']]},
+  {l:'dorm',t:60,r:1,n:'宿舍 60 分鐘慢活伸展日',q:'把房間變成療癒空間，今天慢慢來！',m:[
+    ['原地踏步',300,'s',2,'放首喜歡的歌'],['全身伸展組合',300,'s',3,'頸、肩、背、腿輪流伸展'],
+    ['貓牛式',12,'r',3,'配合呼吸'],['臀橋',15,'r',3,'慢慢上下'],['深呼吸放鬆',180,'s',1,'躺著吸 4 秒、吐 6 秒']]},
+  {l:'dorm',t:60,r:1,n:'宿舍追劇運動會',q:'兩集影集 = 一場運動會，聽起來很划算吧！',m:[
+    ['原地踏步',300,'s',4,'跟著劇情節奏走'],['坐姿抬腿',15,'r',3,'坐在椅子上'],
+    ['牆壁伏地挺身',12,'r',3,'手撐牆'],['側躺抬腿',15,'r',3,'左右各做'],['坐姿前彎',60,'s',3,'慢慢延伸']]},
+  {l:'dorm',t:60,r:2,n:'宿舍 60 分鐘進化計畫',q:'★★ 進化中…一小時後的你會更強！',m:[
+    ['原地踏步熱身',300,'s',1,'熱身很重要'],['深蹲',15,'r',4,'膝蓋對齊腳尖'],
+    ['跪姿伏地挺身',12,'r',4,'身體一直線'],['後跨弓箭步',12,'r',4,'左右輪流'],
+    ['平板支撐',45,'s',4,'不要憋氣'],['臀橋',20,'r',4,'夾緊屁股'],['超人式',15,'r',3,'抬起停 1 秒'],
+    ['收操伸展',300,'s',1,'全身慢慢伸展']]},
+  {l:'dorm',t:60,r:3,n:'宿舍 60 分鐘傳說馬拉松',q:'★★★ 傳說級長征！完成就能炫耀一整週！',m:[
+    ['原地踏步熱身',300,'s',1,'讓心跳慢慢上來'],['深蹲',20,'r',5,'穩穩做'],
+    ['伏地挺身',12,'r',5,'累了改跪姿'],['分腿蹲（後腳放床沿）',12,'r',4,'左右各算一組'],
+    ['平板支撐',60,'s',4,'撐住！'],['側棒式',40,'s',4,'左右輪流'],
+    ['慢速登山者',45,'s',4,'保持安靜'],['收操伸展',300,'s',1,'辛苦了，好好放鬆']]},
+
+  /* ---------- 🌳 公園／戶外 ---------- */
+  {l:'park',t:10,r:1,n:'公園散步任務',q:'出門就贏一半了！呼吸一下新鮮空氣！',m:[
+    ['輕鬆散步',300,'s',1,'看看天空和樹'],['快走',120,'s',1,'走到微喘就好'],
+    ['長椅小腿伸展',30,'s',2,'手扶長椅，後腳跟踩地'],['深呼吸',60,'s',1,'吸 4 秒、吐 6 秒']]},
+  {l:'park',t:10,r:1,n:'公園曬太陽伸展',q:'今日任務：當一株認真光合作用的植物！',m:[
+    ['散步',240,'s',1,'找個有太陽的地方'],['站姿前彎',30,'s',2,'膝蓋可以微彎'],
+    ['擺手繞肩',30,'s',2,'大大的畫圓'],['散步回程',120,'s',1,'慢慢走回來']]},
+  {l:'park',t:10,r:2,n:'公園 10 分鐘快走衝刺',q:'★★ 稀有任務！公園就是你的訓練場！',m:[
+    ['快走',180,'s',1,'手臂用力擺'],['長椅伏地挺身',10,'r',3,'手撐長椅，身體斜斜的'],
+    ['長椅登階',12,'r',3,'一腳踩上去再下來，左右輪流'],['快走',120,'s',1,'最後衝一波']]},
+  {l:'park',t:10,r:3,n:'公園 10 分鐘間歇風暴',q:'★★★ 風暴來襲！全力衝刺吧！',m:[
+    ['慢跑熱身',120,'s',1,'可以跑跑走走'],['快跑',30,'s',4,'用 7 成力衝刺'],
+    ['開合跳',30,'s',3,'戶外可以放心跳'],['長椅登階',15,'r',3,'左右輪流']]},
+  {l:'park',t:30,r:1,n:'公園 30 分鐘散步冒險',q:'每一步都是經驗值，邊走邊看風景！',m:[
+    ['散步',600,'s',2,'走自己舒服的速度'],['快走',180,'s',1,'稍微加快一點'],['全身伸展',60,'s',2,'找棵樹當支撐']]},
+  {l:'park',t:30,r:1,n:'找三種樹的散步任務',q:'特殊支線：邊走邊找三種不同的樹！',m:[
+    ['探索散步',900,'s',1,'任務：找到三種不同的樹或花'],['慢走',300,'s',1,'放慢欣賞你的發現'],
+    ['站姿伸展',60,'s',2,'手往上延伸']]},
+  {l:'park',t:30,r:2,n:'公園 30 分鐘走跑交替',q:'★★ 跑跑走走也是跑！新手最強攻略！',m:[
+    ['快走熱身',300,'s',1,'讓身體熱起來'],['慢跑',120,'s',5,'休息時間就慢慢走'],
+    ['長椅伏地挺身',12,'r',3,'身體一直線'],['緩和散步',300,'s',1,'讓心跳慢下來']]},
+  {l:'park',t:30,r:3,n:'公園 30 分鐘戰士訓練',q:'★★★ 戰士覺醒！今天的公園由你稱霸！',m:[
+    ['慢跑',300,'s',1,'穩穩跑'],['衝刺',20,'s',6,'全力衝！'],
+    ['長椅登階',15,'r',4,'左右輪流'],['長椅三頭撐體',10,'r',3,'背對長椅，手撐著上下'],
+    ['弓箭步走',20,'r',3,'每一步膝蓋往下'],['緩和散步',180,'s',1,'辛苦了']]},
+  {l:'park',t:60,r:1,n:'公園 60 分鐘悠閒漫遊',q:'今天就當個悠閒的冒險者吧！',m:[
+    ['散步',1200,'s',2,'可以聽 Podcast'],['快走',300,'s',1,'中段加速一下'],['全身伸展',120,'s',2,'慢慢伸展']]},
+  {l:'park',t:60,r:1,n:'公園野餐散步行',q:'帶瓶水出門，把運動變成小旅行！',m:[
+    ['散步去公園',900,'s',1,'找一條沒走過的路'],['坐下休息喝水',300,'s',1,'看看身邊的風景'],
+    ['繞公園散步',900,'s',1,'走完一整圈'],['長椅伸展',60,'s',3,'小腿、大腿、肩膀'],['散步回家',600,'s',1,'慢慢走回去']]},
+  {l:'park',t:60,r:2,n:'公園 60 分鐘探險家',q:'★★ 探險家任務！一小時征服整座公園！',m:[
+    ['快走',600,'s',1,'熱身兼探路'],['慢跑',300,'s',3,'跑不動就走'],
+    ['長椅伏地挺身',12,'r',3,'手撐長椅'],['長椅登階',15,'r',3,'左右輪流'],['緩和散步',600,'s',1,'好好呼吸']]},
+  {l:'park',t:60,r:3,n:'公園 60 分鐘傳說長征',q:'★★★ 傳說長征！你的名字會被公園記住！',m:[
+    ['慢跑',900,'s',1,'保持能說話的速度'],['衝刺',30,'s',6,'全力衝刺'],
+    ['長椅登階',20,'r',4,'左右輪流'],['弓箭步走',20,'r',4,'背打直'],
+    ['慢跑',600,'s',1,'最後一段'],['緩和伸展',300,'s',1,'全身伸展']]},
+
+  /* ---------- 🏫 辦公室／教室（坐姿、站姿為主） ---------- */
+  {l:'office',t:10,r:1,n:'辦公桌 10 分鐘解凍',q:'久坐石化解除！動一動身體才會醒！',m:[
+    ['頸部伸展',30,'s',2,'耳朵靠近肩膀'],['坐姿扭轉',30,'s',2,'手扶椅背轉身'],
+    ['手腕繞圈',20,'s',2,'打字族必做'],['站起來伸懶腰',30,'s',2,'手往天花板延伸'],['原地踏步',60,'s',1,'站在座位旁就好']]},
+  {l:'office',t:10,r:1,n:'下課十分鐘回血術',q:'快速補血！10 分鐘讓你滿血回歸！',m:[
+    ['聳肩放鬆',10,'r',2,'肩膀用力往上再放下'],['坐姿前彎',30,'s',1,'讓背部放鬆'],
+    ['看遠方讓眼睛休息',60,'s',1,'看窗外最遠的地方'],['走去裝水',120,'s',1,'順便多走幾步']]},
+  {l:'office',t:10,r:2,n:'辦公室隱形訓練',q:'★★ 隱形模式啟動！同事不會發現你在練！',m:[
+    ['椅子深蹲',15,'r',3,'屁股碰到椅子就站起來'],['桌緣伏地挺身',12,'r',3,'手撐桌子邊緣'],
+    ['坐姿抬膝',15,'r',3,'坐著輪流抬膝'],['靠牆靜蹲',30,'s',2,'背貼牆，像坐隱形椅子']]},
+  {l:'office',t:10,r:3,n:'辦公室無聲特訓',q:'★★★ 傳說特務任務！安靜地變強！',m:[
+    ['椅子深蹲',20,'r',3,'不要真的坐下'],['桌緣伏地挺身',15,'r',3,'身體一直線'],
+    ['靠牆靜蹲',45,'s',3,'大腿跟地面平行'],['墊腳尖',25,'r',3,'扶著桌子也可以']]},
+  {l:'office',t:30,r:1,n:'午休 30 分鐘伸展散步',q:'午休不只能睡覺，動一下下午更有精神！',m:[
+    ['走廊散步',600,'s',1,'繞一圈大樓也行'],['頸肩伸展',60,'s',2,'慢慢來'],
+    ['坐姿扭轉',45,'s',2,'左右各一次'],['散步回座位',300,'s',1,'順便買杯飲料']]},
+  {l:'office',t:30,r:1,n:'辦公室 30 分鐘舒緩',q:'把緊繃的肩膀還給自己！',m:[
+    ['站姿全身伸展',120,'s',3,'頸、肩、腰輪流'],['原地踏步',180,'s',3,'可以站在桌邊'],
+    ['手腕前臂伸展',45,'s',2,'手掌往下壓']]},
+  {l:'office',t:30,r:2,n:'辦公室 30 分鐘樓梯任務',q:'★★ 電梯先休息，樓梯才是你的戰場！',m:[
+    ['慢慢爬樓梯',180,'s',3,'扶好扶手，下樓慢走'],['椅子深蹲',15,'r',3,'背打直'],
+    ['桌緣伏地挺身',12,'r',3,'手撐桌子'],['靠牆靜蹲',40,'s',3,'穩住']]},
+  {l:'office',t:30,r:3,n:'辦公室 30 分鐘樓梯魔王',q:'★★★ 魔王樓梯出現！一路攻上頂樓！',m:[
+    ['爬樓梯',240,'s',4,'可以一次兩階'],['椅子深蹲',20,'r',4,'速度穩定'],
+    ['桌緣伏地挺身',15,'r',4,'胸口靠近桌子'],['靠牆靜蹲',60,'s',3,'撐住！']]},
+  {l:'office',t:60,r:1,n:'下班慢走 60 分鐘',q:'今天的通勤就是運動，走一段路回家吧！',m:[
+    ['慢走',1500,'s',2,'可以提早一站下車走回家'],['站姿伸展',120,'s',2,'到家後伸展一下']]},
+  {l:'office',t:60,r:1,n:'番茄鐘微運動 60 分',q:'邊工作邊運動，效率和健康一起拿！',m:[
+    ['專心工作',1500,'s',1,'先專心 25 分鐘'],['站起來伸展',120,'s',1,'伸懶腰、轉轉脖子'],
+    ['專心工作',1500,'s',1,'再專心 25 分鐘'],['走去裝水',180,'s',1,'多繞一點路']]},
+  {l:'office',t:60,r:2,n:'辦公室 60 分鐘全身循環',q:'★★ 循環訓練開始！整棟大樓都是器材！',m:[
+    ['爬樓梯',300,'s',3,'下樓慢走'],['椅子深蹲',15,'r',4,'背打直'],
+    ['桌緣伏地挺身',12,'r',4,'身體一直線'],['靠牆靜蹲',45,'s',4,'像坐隱形椅子'],
+    ['坐姿抬膝',20,'r',3,'肚子出力'],['收操伸展',300,'s',1,'好好放鬆']]},
+  {l:'office',t:60,r:3,n:'辦公大樓傳說攻頂',q:'★★★ 傳說攻頂戰！頂樓的風景屬於你！',m:[
+    ['爬樓梯',300,'s',5,'一路往上爬'],['椅子深蹲',20,'r',5,'穩穩做'],
+    ['桌緣伏地挺身',15,'r',5,'不要塌腰'],['靠牆靜蹲',60,'s',4,'撐住！'],
+    ['墊腳尖',30,'r',4,'小腿燃燒中'],['收操伸展',300,'s',1,'辛苦了']]},
+
+  /* ---------- 🏋️ 健身房 ---------- */
+  {l:'gym',t:10,r:1,n:'健身房初體驗 10 分',q:'踏進健身房的你，已經超越昨天的自己！',m:[
+    ['飛輪輕鬆騎',300,'s',1,'阻力調低'],['跑步機慢走',180,'s',1,'速度 4～5'],['墊上伸展',60,'s',2,'找個角落伸展']]},
+  {l:'gym',t:10,r:1,n:'健身房報到就算贏',q:'今天的成就：成功打卡！',m:[
+    ['跑步機慢走',420,'s',1,'可以邊看手機'],['墊上伸展',60,'s',2,'腿和背']]},
+  {l:'gym',t:10,r:2,n:'健身房 10 分鐘快打',q:'★★ 快打模式！短時間高效率！',m:[
+    ['划船機',120,'s',2,'先推腿再拉手'],['啞鈴深蹲',12,'r',3,'選輕一點的啞鈴'],['啞鈴肩推',10,'r',3,'往上推到手打直']]},
+  {l:'gym',t:10,r:3,n:'健身房 10 分鐘燃燒彈',q:'★★★ 燃燒彈引爆！10 分鐘燒好燒滿！',m:[
+    ['飛輪衝刺',30,'s',5,'全力踩！'],['壺鈴擺盪',15,'r',3,'用臀部的力量甩'],['啞鈴硬舉',12,'r',3,'背打直，屁股往後推']]},
+  {l:'gym',t:30,r:1,n:'健身房 30 分鐘有氧散步',q:'在跑步機上散步，也是很棒的開始！',m:[
+    ['跑步機坡度快走',900,'s',1,'坡度 5～8，速度 4～5'],['飛輪',300,'s',1,'輕鬆踩'],['墊上伸展',120,'s',2,'全身伸展']]},
+  {l:'gym',t:30,r:1,n:'健身房器材試玩',q:'新手村任務：認識三台器材！',m:[
+    ['腿推機',12,'r',3,'先從最輕的重量開始'],['坐姿划船機',12,'r',3,'把把手拉向肚子'],
+    ['胸推機',12,'r',3,'往前推，慢慢回來'],['跑步機快走',600,'s',1,'收尾有氧']]},
+  {l:'gym',t:30,r:2,n:'健身房 30 分鐘器材巡禮',q:'★★ 器材巡禮！每台機器都是你的隊友！',m:[
+    ['跑步機熱身',300,'s',1,'快走即可'],['腿推機',12,'r',4,'膝蓋不要鎖死'],
+    ['滑輪下拉',12,'r',4,'拉到胸前'],['胸推機',12,'r',4,'慢慢回來'],['平板支撐',40,'s',3,'墊上做']]},
+  {l:'gym',t:30,r:3,n:'健身房 30 分鐘力量試煉',q:'★★★ 力量試煉！你的肌肉在歡呼！',m:[
+    ['划船機',300,'s',1,'熱身'],['啞鈴深蹲',12,'r',4,'穩穩蹲'],['啞鈴臥推',10,'r',4,'躺在椅子上推'],
+    ['啞鈴划船',10,'r',4,'單手撐椅，啞鈴拉向腰'],['壺鈴擺盪',15,'r',4,'臀部發力'],['平板支撐',60,'s',3,'撐住！']]},
+  {l:'gym',t:60,r:1,n:'健身房 60 分鐘輕鬆有氧',q:'今天就把健身房當成大型散步場！',m:[
+    ['跑步機快走',1200,'s',1,'可以看影片'],['飛輪',900,'s',1,'輕鬆踩'],['橢圓機',600,'s',1,'手腳一起動'],['墊上伸展',300,'s',1,'全身伸展']]},
+  {l:'gym',t:60,r:1,n:'健身房放鬆日',q:'輕重量、慢慢來，享受流汗的感覺！',m:[
+    ['橢圓機',900,'s',1,'熱身'],['腿推機（輕重量）',12,'r',3,'動作慢一點'],
+    ['胸推機（輕重量）',12,'r',3,'控制速度'],['跑步機快走',900,'s',1,'有氧收尾'],['墊上伸展',600,'s',1,'好好放鬆']]},
+  {l:'gym',t:60,r:2,n:'健身房 60 分鐘全身課表',q:'★★ 全身課表解鎖！一次練好練滿！',m:[
+    ['跑步機熱身',600,'s',1,'快走'],['腿推機',12,'r',4,'腳踩與肩同寬'],['滑輪下拉',12,'r',4,'背部出力'],
+    ['胸推機',12,'r',4,'慢慢推'],['啞鈴肩推',10,'r',3,'核心收緊'],['腿彎舉機',12,'r',3,'慢慢放回'],
+    ['平板支撐',45,'s',3,'墊上做'],['飛輪收尾',600,'s',1,'輕鬆踩']]},
+  {l:'gym',t:60,r:3,n:'健身房 60 分鐘傳說課表',q:'★★★ 傳說課表！今天你就是健身房之王！',m:[
+    ['划船機',600,'s',1,'熱身'],['啞鈴深蹲',12,'r',5,'穩穩蹲'],['啞鈴臥推',10,'r',5,'控制速度'],
+    ['啞鈴划船',12,'r',5,'背部出力'],['壺鈴擺盪',20,'r',4,'臀部發力'],['啞鈴弓箭步',12,'r',4,'左右輪流'],
+    ['平板支撐',60,'s',4,'撐住！'],['飛輪衝刺',30,'s',6,'最後全力衝！']]},
+];
+
+/* =====================================================
+   2. 選項設定
+   ===================================================== */
+const TIMES = [10, 30, 60];
+const LOCS = {
+  dorm:  {e:'🛏️', n:'宿舍／房間'},
+  park:  {e:'🌳', n:'公園／戶外'},
+  office:{e:'🏫', n:'辦公室／教室'},
+  gym:   {e:'🏋️', n:'健身房'},
+};
+// 體力等級：w = [普通, 稀有, 傳說] 的抽中機率（規格書 4.2）
+const ENERGY = [
+  {n:'沙發模式', w:[100, 0, 0]},
+  {n:'有點累',   w:[90, 10, 0]},
+  {n:'普通',     w:[70, 25, 5]},
+  {n:'還不錯',   w:[50, 40, 10]},
+  {n:'滿血狀態', w:[30, 50, 20]},
+];
+const RARITY = {
+  1:{n:'普通', s:'★',   host:'任務入手！簡單暴力，出發吧！'},
+  2:{n:'稀有', s:'★★',  host:'哇！★★ 稀有任務出現了！'},
+  3:{n:'傳說', s:'★★★', host:'恭喜獲得 ★★★ 傳說任務！你就是天選之人！'},
+};
+const REST = 15;        // 動作之間的休息秒數
+const MAX_REROLL = 2;   // 每次最多重抽次數
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* 目前狀態 */
+const state = {time:null, loc:null, energy:null, card:null, rerolls:MAX_REROLL};
+
+/* 小工具 */
+const $ = id => document.getElementById(id);
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  window.scrollTo({top:0});
+}
+// 把數量轉成文字：90 秒 → 90 秒、300 秒 → 5 分鐘、15 下
+function amountText(a, u){
+  if (u === 'r') return a + ' 下';
+  return (a >= 60 && a % 60 === 0) ? (a / 60) + ' 分鐘' : a + ' 秒';
+}
+function batteryHTML(level){
+  let cells = '';
+  for (let i = 1; i <= 5; i++) cells += `<i class="${i <= level ? 'f' : ''}"></i>`;
+  return `<span class="bat e${level}">${cells}</span>`;
+}
+
+/* =====================================================
+   3. 首頁：產生選項按鈕
+   ===================================================== */
+function buildOptions(){
+  $('opt-time').innerHTML = TIMES.map(t =>
+    `<button class="opt" data-k="time" data-v="${t}" aria-pressed="false"><span class="num">${t}</span><span class="sub">分鐘</span></button>`).join('');
+  $('opt-loc').innerHTML = Object.entries(LOCS).map(([k, v]) =>
+    `<button class="opt" data-k="loc" data-v="${k}" aria-pressed="false"><span class="emo">${v.e}</span>${v.n}</button>`).join('');
+  $('opt-energy').innerHTML = ENERGY.map((e, i) =>
+    `<button class="opt" data-k="energy" data-v="${i}" aria-pressed="false">${batteryHTML(i + 1)}<span>${e.n}</span></button>`).join('');
+
+  document.querySelectorAll('#home .opt').forEach(btn => btn.addEventListener('click', () => {
+    const k = btn.dataset.k;
+    state[k] = k === 'loc' ? btn.dataset.v : Number(btn.dataset.v);
+    document.querySelectorAll(`.opt[data-k="${k}"]`).forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on);
+    });
+    updateDrawButton();
+  }));
+}
+function updateDrawButton(){
+  const missing = [];
+  if (state.time === null) missing.push('時間');
+  if (state.loc === null) missing.push('地點');
+  if (state.energy === null) missing.push('體力');
+  $('btn-draw').disabled = missing.length > 0;
+  $('hint').textContent = missing.length ? '還差：' + missing.join('、') : '準備好了！按下去看看今天的命運 ✦';
+}
+
+/* =====================================================
+   4. 抽卡邏輯（規格書 3.2、3.3）
+   ===================================================== */
+function pickRarity(weights){
+  const roll = Math.random() * 100;
+  let sum = 0;
+  for (let i = 0; i < 3; i++){ sum += weights[i]; if (roll < sum) return i + 1; }
+  return 1;
+}
+function drawCard(excludeCard){
+  const w = ENERGY[state.energy].w;
+  // 先篩出符合「地點＋時間」的卡，並排除剛剛那張
+  const base = CARDS.filter(c => c.l === state.loc && c.t === state.time && c !== excludeCard);
+  const rarity = pickRarity(w);
+  let pool = base.filter(c => c.r === rarity);
+  // 如果該稀有度沒卡可抽（例如重抽時只剩剛剛那張），改從「這個體力可抽到的稀有度」裡選
+  if (!pool.length) pool = base.filter(c => w[c.r - 1] > 0);
+  if (!pool.length) pool = base;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/* =====================================================
+   5. 拆盲盒動畫
+   ===================================================== */
+let animTimers = [];
+function clearAnim(){ animTimers.forEach(clearTimeout); animTimers = []; }
+function later(fn, ms){ animTimers.push(setTimeout(fn, ms)); }
+
+function openBlindBox(isReroll){
+  const card = drawCard(isReroll ? state.card : null);
+  state.card = card;
+  clearAnim();
+  show('draw');
+
+  const box = $('box');
+  $('result').hidden = true;
+  $('stage').hidden = false;
+  box.className = 'box';
+  box.style.setProperty('--glow', `var(--r${card.r})`);
+  void box.offsetWidth;   // 讓動畫可以重新播放
+
+  if (reduceMotion){       // 減少動態效果：直接淡入卡片
+    later(revealCard, 300);
+    return;
+  }
+  box.classList.add('shake');                       // 1. 搖晃
+  later(() => { box.classList.add('open'); beep(660, .08); }, 1000);  // 2. 開蓋發光
+  later(() => box.classList.add('gone'), 1700);     // 3. 盒子消失
+  later(revealCard, 1950);                          // 4. 卡片彈出
+}
+
+function revealCard(){
+  const c = state.card, R = RARITY[c.r], L = LOCS[c.l];
+  $('stage').hidden = true;
+  $('result').hidden = false;
+  $('host').textContent = R.host;
+  $('host').style.color = `var(--r${c.r})`;
+  const sets = c.m.reduce((s, m) => s + m[3], 0);
+  $('card').innerHTML = `
+    <div class="card r${c.r} pop">
+      <span class="rar">${R.s} ${R.n}</span>
+      <span class="meta">${L.e} ${L.n}</span>
+      <h2>${c.n}</h2>
+      <div class="quote">「${c.q}」</div>
+      <ul class="moves">
+        ${c.m.map(([n, a, u, s, tip]) => `
+          <li><b>${n}<small>${tip || ''}</small></b>
+          <span>${amountText(a, u)}${s > 1 ? ' × ' + s + ' 組' : ''}</span></li>`).join('')}
+      </ul>
+      <div class="total">⏱ 約 ${c.t} 分鐘 · ${c.m.length} 個動作 · 共 ${sets} 組</div>
+    </div>`;
+  if (c.r === 3 && !reduceMotion){             // 傳說卡：畫面震動
+    const app = $('app');
+    app.classList.remove('quake'); void app.offsetWidth; app.classList.add('quake');
+    beep(880, .1); later(() => beep(1320, .15), 120);
+  }
+  updateRerollButton();
+}
+
+function updateRerollButton(){
+  const btn = $('btn-reroll');
+  btn.disabled = state.rerolls <= 0;
+  btn.textContent = state.rerolls > 0 ? `🔄 重抽 ×${state.rerolls}` : '🔒 重抽次數用完';
+  $('reroll-hint').textContent = state.rerolls > 0 ? '不喜歡這張？還有機會換一張' : '命運已定！接受挑戰吧';
+}
+
+/* =====================================================
+   6. 計時器（規格書 3.4）
+   ===================================================== */
+const T = {steps:[], i:0, left:0, paused:false, iv:null, startAt:0, done:0};
+
+// 把卡片展開成一步一步的流程：動作 → 休息 → 動作 …
+function buildSteps(card){
+  const steps = [];
+  card.m.forEach(([n, a, u, sets, tip]) => {
+    for (let k = 1; k <= sets; k++){
+      if (steps.length) steps.push({rest:true, a:REST, u:'s'});
+      steps.push({n, a, u, k, sets, tip});
+    }
+  });
+  return steps;
+}
+
+function startTimer(){
+  T.steps = buildSteps(state.card);
+  T.i = 0; T.paused = false; T.done = 0;
+  T.startAt = Date.now();
+  $('t-title').textContent = state.card.n;
+  resetQuit();
+  show('timer');
+  keepAwake(true);
+  loadStep();
+  clearInterval(T.iv);
+  T.iv = setInterval(tick, 1000);
+}
+
+function loadStep(){
+  const s = T.steps[T.i];
+  T.left = s.a;
+  const panel = $('t-panel');
+  panel.classList.toggle('rest', !!s.rest);
+  // 找下一個「動作」做預告
+  const next = T.steps.slice(T.i + 1).find(x => !x.rest);
+  $('t-next').textContent = next ? `下一個：${next.n}（${amountText(next.a, next.u)}）` : '這是最後一個了！衝啊！';
+
+  if (s.rest){
+    $('t-phase').textContent = 'REST';
+    $('t-name').textContent = '休息一下';
+    $('t-set').textContent = '';
+    $('t-tip').textContent = '喝口水，下一關馬上開始！';
+  } else {
+    $('t-phase').textContent = 'GO!';
+    $('t-name').textContent = s.n;
+    $('t-set').textContent = s.sets > 1 ? `第 ${s.k} / ${s.sets} 組` : '';
+    $('t-tip').textContent = s.tip || '';
+  }
+  // 次數型動作：不倒數，按按鈕進下一步
+  const isReps = s.u === 'r';
+  $('btn-pause').disabled = isReps;
+  $('btn-skip').textContent = isReps ? '✅ 完成，下一步' : '⏭ 跳過';
+  $('btn-pause').textContent = T.paused ? '▶ 繼續' : '⏸ 暫停';
+  renderTimer();
+  beep(s.rest ? 440 : 760, .12);
+}
+
+function renderTimer(){
+  const s = T.steps[T.i];
+  const big = $('t-big');
+  if (s.u === 'r'){
+    big.textContent = s.a + ' 下';
+    big.className = 'big unit';
+  } else {
+    const m = Math.floor(T.left / 60), sec = T.left % 60;
+    big.textContent = T.left >= 60 ? `${m}:${String(sec).padStart(2, '0')}` : String(T.left);
+    big.className = 'big' + (T.left <= 3 ? ' warn' : '');
+    if (T.left <= 3){ void big.offsetWidth; }   // 最後 3 秒放大閃爍
+  }
+  const actions = T.steps.filter(x => !x.rest).length;
+  const doneActions = T.steps.slice(0, T.i).filter(x => !x.rest).length;
+  $('t-bar').style.width = (T.i / T.steps.length * 100) + '%';
+  $('t-count').textContent = `${doneActions} / ${actions}`;
+}
+
+function tick(){
+  const s = T.steps[T.i];
+  if (!s || T.paused || s.u === 'r') return;
+  T.left--;
+  if (T.left > 0 && T.left <= 3) beep(600, .06);
+  if (T.left <= 0) nextStep(true);
+  else renderTimer();
+}
+
+function nextStep(finished){
+  const s = T.steps[T.i];
+  if (!s.rest && finished !== false) T.done++;
+  T.i++;
+  if (T.i >= T.steps.length) return missionClear();
+  loadStep();
+}
+
+function stopTimer(){
+  clearInterval(T.iv);
+  keepAwake(false);
+}
+
+/* 放棄任務：按兩下確認，避免誤觸（不使用跳出視窗） */
+let quitArmed = null;
+function resetQuit(){
+  clearTimeout(quitArmed); quitArmed = null;
+  $('btn-quit').classList.remove('confirm');
+  $('btn-quit').textContent = '放棄任務';
+}
+
+/* =====================================================
+   7. 完成畫面
+   ===================================================== */
+function missionClear(){
+  stopTimer();
+  const secs = Math.round((Date.now() - T.startAt) / 1000);
+  $('c-name').textContent = `${RARITY[state.card.r].s} ${state.card.n}`;
+  $('c-moves').textContent = T.done;
+  $('c-time').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  show('clear');
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, .15), i * 140));
+  if (!reduceMotion) confetti();
+}
+function confetti(){
+  const emojis = ['🎉', '✨', '⭐', '💪', '🔥', '🏅'];
+  for (let i = 0; i < 28; i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = emojis[i % emojis.length];
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.animationDuration = (2 + Math.random() * 2) + 's';
+    el.style.animationDelay = Math.random() * .8 + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
+}
+
+/* =====================================================
+   8. 音效（Web Audio 產生「嗶」聲，不需要音檔，預設關閉）
+   ===================================================== */
+let soundOn = false, audioCtx = null;
+function beep(freq, dur){
+  if (!soundOn || !audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = freq;
+  g.gain.setValueAtTime(.08, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + dur);
+}
+
+/* 計時中保持螢幕不關閉（不支援的瀏覽器就略過） */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if (!on && wakeLock){ await wakeLock.release(); wakeLock = null; }
+  }catch(e){ /* 忽略 */ }
+}
+
+/* =====================================================
+   9. 按鈕事件
+   ===================================================== */
+$('btn-draw').addEventListener('click', () => { state.rerolls = MAX_REROLL; openBlindBox(false); });
+$('btn-reroll').addEventListener('click', () => {
+  if (state.rerolls <= 0) return;
+  state.rerolls--;
+  openBlindBox(true);
+});
+$('btn-back').addEventListener('click', () => { clearAnim(); show('home'); });
+$('btn-start').addEventListener('click', startTimer);
+$('btn-pause').addEventListener('click', () => {
+  T.paused = !T.paused;
+  $('btn-pause').textContent = T.paused ? '▶ 繼續' : '⏸ 暫停';
+  $('t-phase').textContent = T.paused ? 'PAUSE' : (T.steps[T.i].rest ? 'REST' : 'GO!');
+});
+$('btn-skip').addEventListener('click', () => {
+  const s = T.steps[T.i];
+  nextStep(s.u === 'r');   // 次數型按「完成」算完成；計時型按「跳過」不算
+});
+$('btn-quit').addEventListener('click', () => {
+  if (!quitArmed){
+    $('btn-quit').classList.add('confirm');
+    $('btn-quit').textContent = '確定放棄？再按一次';
+    quitArmed = setTimeout(resetQuit, 3000);
+  } else {
+    resetQuit(); stopTimer(); show('home');
+  }
+});
+$('btn-again').addEventListener('click', () => { state.rerolls = MAX_REROLL; show('home'); });
+$('btn-sound').addEventListener('click', () => {
+  soundOn = !soundOn;
+  if (soundOn && !audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  $('btn-sound').textContent = soundOn ? '🔊' : '🔇';
+  beep(880, .08);
+});
+// 切回頁面時重新要求螢幕常亮
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && $('timer').classList.contains('active')) keepAwake(true);
+});
+
+/* 啟動！ */
+buildOptions();
+updateDrawButton();
+</script>
+</body>
+</html>
